@@ -10,3 +10,6 @@ Files in folder:
 - plot_functions.r: script containing functions for plotting
 - plot_functions_english.r: script containing functions for plotting in english
 - styles.css: file with specifications of layout, fonts etc.
+
+
+For more details on the project, please see [project readme](https://github.com/Guscode/DigForWhat)
