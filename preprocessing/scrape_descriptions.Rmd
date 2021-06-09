@@ -1,0 +1,295 @@
+---
+title: "scrape descriptions"
+function: "markdown describing how archeological descriptions were scraped from different websites and preprocessed"
+output: html_document
+---
+
+Defining functions for extracting words and searching wikipedia and scraping html sites and capitalizing first
+```{r}
+library(pacman)
+p_load(jsonlite, rvest, stringr)
+
+#Function for extracting first 10 words from a string
+ten_words <- function(string) {
+  ul = unlist(strsplit(string, split = "\\s+"))[1:10]
+  txt = paste(ul,collapse=" ")
+  return(gsub("NA", "", txt))
+  
+}
+
+#Extracting five sentences from string
+extract_five_sentences <- function(string){
+  sentences <- unlist(strsplit(string, "\\. (?=[A-Z])", perl=T))
+  if(length(sentences)>5){
+    sentences <- paste(sentences[c(1:5)], collapse =". ") 
+  }else{
+    sentences <- paste(sentences[c(1:length(sentences))], collapse =". ")
+    }
+  return(sentences)
+}
+
+#Capitalize first letter
+firstup <- function(x){
+  substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+  x
+}
+
+#Function for searching infomedia and extracting most popular sites using wikipedia api
+MySearch <- function(srsearch){
+  FullSearchString <- paste("http://da.wikipedia.org/w/api.php?action=query&list=search&srsearch=",srsearch,"&format=json",sep="")
+  Response <- fromJSON(FullSearchString)
+  return(Response)
+}
+
+#Function for scraping html sites with specified link and html.tag found with chrome addon selectorgadget
+scrape <- function(link, html.tag){
+  web_html <-   try(read_html(link)) #Try function built in to keep scraping despite 404 site not found error
+  if(web_html!="Error in open.connection(x, \"rb\") : HTTP error 404.\n"){
+    nodes <- html_nodes(web_html,html.tag) #Extract specific part of html
+    text <- paste(html_text(nodes), collapse = " ") #Create string from html piece
+  } else{
+    text <- "error" #if error return error
+  }
+  return(text)
+}
+
+```
+
+Code preprocessing finding names to fit search strings of different sites
+```{r}
+#Creating list of finding types in the right format for wikipedia search
+anlag <- unique(data$anlaegsbet)
+anlag <- gsub(",.*", "", anlag)
+anlag <- gsub(" ", "%20", anlag)
+anlag <- gsub("ø|Ø", "oe", anlag)
+anlag <- gsub("æ|Æ", "ae", anlag)
+anlag <- gsub("å|Å", "aa", anlag)
+
+wiki_anlag <- c()
+for(i in anlag){
+  Response <- MySearch(i)
+  if(!is.null(Response$query$search$title[1])){
+    title = Response$query$search$title[1] #Extracting the most popular item for every wikipedia search
+  } else {
+    title = "Not_found"
+  }
+  wiki_anlag <- c(wiki_anlag,title)
+}
+wiki_anlag <- gsub(",.*", "", wiki_anlag)
+wiki_anlag <- gsub(" ", "%20", wiki_anlag) #Adding %20 instead of spaces in finding name
+
+trap_anlag <- gsub(" ", "_",  gsub('[[:punct:] ]+',' ',tolower(unique(data$anlaegsbet)))) #Creating list for trap dk
+dst_anlag <- gsub(" ", "_",  gsub('[[:punct:] ]+',' ',tolower(unique(data$anlaegsbet)))) #Creating list for dst
+ddo_anlag <- gsub(" ", "+",  gsub('[[:punct:] ]+',' ',tolower(unique(data$anlaegsbet)))) #Creating list for ddo
+
+```
+
+Code for scraping websites and preparing descriptions for manual inspection 
+```{r}
+p_load(gtools)
+
+#Define websites
+wiki <- "https://da.wikipedia.org/wiki/"
+trap <- "https://trap.lex.dk/"
+dst <-"https://denstoredanske.lex.dk/"
+ddo <- "https://ordnet.dk/ddo/ordbog?query="
+
+#Define empty dataset
+all_texts <- data.frame()
+
+#Loop through all finding types
+for(i in c(1:length(wiki_anlag))){
+  #Create site-specific links
+  wiki_site <- paste(wiki,wiki_anlag[i], sep = "") 
+  trap_site <- paste(trap, trap_anlag[i], sep="")
+  dst_site <- paste(dst, dst_anlag[i], sep="")
+  ddo_site <- paste(ddo, ddo_anlag[i], sep="")
+
+  #Scrape all sites with the proper html tag
+  wiki_text <- scrape(wiki_site, html.tag = "#mw-content-text p")
+  trap_text <- scrape(trap_site, html.tag = "p") 
+  dst_text <- scrape(dst_site, html.tag = "p")
+  ddo_text <- scrape(ddo_site, html.tag = "#betydning-1 .definition")
+
+  #Add texts to the dataframe
+  all_texts <- smartbind(all_texts, 
+                         data.frame(wiki_txt=as.character(wiki_text), 
+                          trap_txt=as.character(trap_text),
+                          dst_txt=as.character(dst_text),
+                          ddo_txt=as.character(ddo_text),anlaeg=dst_anlag[i]))
+}
+
+texts_for_indexing <- all_texts #duplicate dataframe with texts for manual inspection
+
+#Extract forst 10 words for manual inspection
+for( i in c(1:nrow(texts_for_indexing))){
+  texts_for_indexing$wiki_txt[i] <- ten_words(texts_for_indexing$wiki_txt[i])
+  texts_for_indexing$trap_txt[i] <- ten_words(texts_for_indexing$trap_txt[i])
+  texts_for_indexing$dst_txt[i] <- ten_words(texts_for_indexing$dst_txt[i])
+  texts_for_indexing$ddo_txt[i] <- ten_words(texts_for_indexing$ddo_txt[i])
+}
+
+#save data frame
+write.csv(texts_for_indexing, "scraped_archeology.csv", row.names = F)
+```
+The scraped_archeology.csv data frame was manually coded in excel in order to avoid using error descriptions or descriptions of similar items. All descriptions were coded for which source should be used out of the four.
+
+The manually coded data is filtered in this code chunk
+```{r}
+#Reading the coded data
+indeks <- read.csv("scraped_archeology_indeks.csv")
+indeks$indeks <- ifelse(is.na(indeks$indeks), 0,indeks$indeks)
+
+all_texts$indeks <- indeks$indeks
+all_texts$final_text <- ""
+#Looping through all texts and adding the one coded for
+for(i in c(1:length(all_texts$indeks))){
+  if(all_texts$indeks[i] == 1){
+    all_texts$final_text[i] <- all_texts$wiki_txt[i]
+  }
+  if(all_texts$indeks[i] == 2){
+    all_texts$final_text[i] <- all_texts$trap_txt[i]
+  }
+  if(all_texts$indeks[i] == 3){
+    all_texts$final_text[i] <- all_texts$dst_txt[i]
+  }
+  if(all_texts$indeks[i] == 4){
+    all_texts$final_text[i] <- all_texts$ddo_txt[i]
+  } else {print("no")}
+}
+
+#Cleaning up texts for meta comments from websites
+all_texts$final_text <- gsub(". Se også.*", "", all_texts$final_text)
+all_texts$final_text <- gsub("Din kommentar.*", "", all_texts$final_text)
+all_texts$final_text <- gsub("Læs mere.*", "", all_texts$final_text)
+
+#Creating list of unique finding types
+anlag <- unique(data$anlaegsbet)
+
+#Adding list to data frame with descriptions
+all_texts$anlag_n <- c("",anlag)
+
+#Adding counts to the data frame
+counts <- data %>% count(anlaegsbet) 
+colnames(counts)[1] <- "anlag_n"
+all_texts_withcount <- left_join(all_texts, counts, by = "anlag_n")
+
+#Selecting the needed columns
+all_texts_withcount <- dplyr::select(all_texts_withcount,c(anlag_n,final_text, n) )
+all_texts_withcount <- all_texts_withcount[-1,]
+
+#Ordering by count
+all_texts_withcount <- all_texts_withcount[order(all_texts_withcount$n, decreasing = T),]
+row.names(all_texts_withcount) <- c(1:325)
+
+#Adding missing descriptions
+all_texts_withcount$final_text[4] <- "Boplads eller mindre by med varierende mængder af bebyggelse"
+all_texts_withcount$final_text[5] <- "Brandgrav, fællesbetegnelse for begravelsesformer af forskellig udformning, hvor den afdøde er brændt før gravlæggelsen. I Danmark kendt fra yngre stenalder frem til og med vikingetiden"
+all_texts_withcount$final_text[6] <- "selvstændig bygning som bruges til beboelse, ophold eller opbevaring"
+all_texts_withcount$final_text[8] <- "en nedgraving fyldt op med affald fra den omkringliggende boplads"
+all_texts_withcount$final_text[13] <- "Gamle mønter/valuta"
+all_texts_withcount$final_text[14] <- "gravet hul i jordoverfladen"
+all_texts_withcount$final_text[19] <- "Udefineret genstand"
+all_texts_withcount$final_text[20] <- "System af marker til såning af afgrøder"
+all_texts_withcount$final_text[45] <- "dynge eller ophobning af sten der markerer fx en afgrænsning af markareal"
+all_texts_withcount$final_text[52] <-  "Spor efter opdyrkning af jord"
+all_texts_withcount$final_text[55] <-  "Knogler fra dyr"
+all_texts_withcount$final_text[62] <- "En bavnehøj er et højdepunkt som fra middelalderen og til 1800-tallet brugtes til signalering om faresituationer, fx en angribende fjende. En brændestabel, en bavn, antændtes, så faresignalet kunne ses videnom."
+
+
+write.csv(all_texts_withcount, "all_texts.csv", row.names = F)
+```
+
+In this code chunk, missing descriptions are searched for by aletering the search terms to use only first word in the finding name.
+```{r}
+#Filtering to include only missing descriptions
+not_found <- all_texts_withcount$anlag_n[which(all_texts_withcount$final_text=="")]
+
+#Removing punctuation and everything after a space, and lowering the string
+not_found <- gsub('[[:punct:] ]+',' ',not_found)
+not_found <- gsub(' .*','',not_found)
+not_found <- tolower(not_found)
+
+#Empty data frame for storing texts
+not_texts <- data.frame()
+
+#Looping through missing descriptions
+for(i in c(1:length(not_found))){
+  #creating site-specific links
+  trap_site <- paste(trap, not_found[i], sep="")
+  dst_site <- paste(dst, not_found[i], sep="")
+  ddo_site <- paste(ddo, not_found[i], sep="")
+  
+  #scraping links
+  trap_text <- scrape(trap_site, html.tag = "p") 
+  dst_text <- scrape(dst_site, html.tag = "p")
+  ddo_text <- scrape(ddo_site, html.tag = "#betydning-1 .definition")
+  
+  #Adding to data frame
+  not_texts <- smartbind(not_texts,
+                         data.frame(trap_txt=as.character(trap_text),
+                          dst_txt=as.character(dst_text),
+                          ddo_txt=as.character(ddo_text),anlaeg=not_found[i]))
+}
+
+#Adding count
+not_texts$anlag_n <-  all_texts_withcount$anlag_n[which(all_texts_withcount$final_text=="")]
+
+#Assigning descriptions based on site type
+not_texts$final <- ""
+for(i in c(1:nrow(not_texts))){
+  if(nchar(not_texts$trap_txt[i])>10){
+    print("bla")
+    not_texts$final[i] <- not_texts$trap_txt[i]
+  } else {
+    if(nchar(not_texts$dst_txt[i])>10 & nchar(not_texts$ddo_txt[i])>10){
+      not_texts$final[i] <- not_texts$dst_txt[i]
+    } else if(nchar(not_texts$dst_txt[i])>10 & nchar(not_texts$ddo_txt[i])<10) {
+      not_texts$final[i] <- not_texts$dst_txt[i]
+    } else if(nchar(not_texts$dst_txt[i])<10 & nchar(not_texts$ddo_txt[i])>10) {
+      not_texts$final[i] <- not_texts$ddo_txt[i]
+    }
+  }
+}
+
+#Adding new descriptions to data frame
+for(i in c(1:nrow(not_texts))){
+  all_texts_withcount$final_text[which(all_texts_withcount$anlag_n == not_texts$anlag_n[i])] <- not_texts$final[i]
+}
+
+#cleaning texts
+all_texts_withcount$final_text <- gsub(". Se også.*", "", all_texts_withcount$final_text)
+all_texts_withcount$final_text <- gsub("Din kommentar.*", "", all_texts_withcount$final_text)
+all_texts_withcount$final_text <- gsub("Læs mere.*", "", all_texts_withcount$final_text)
+```
+
+```{r}
+#Manually shortening 50 most found descriptions
+all_texts_withcount$description[1] <- gsub(". I begyndelsen af bon.*", "", all_texts_withcount$description[1])
+all_texts_withcount$description[9] <- gsub("De findes, afhængig.*", "", all_texts_withcount$description[9])
+all_texts_withcount$description[10] <- gsub("I enkelte af de undersøgte.*", "", all_texts_withcount$description[10])
+all_texts_withcount$description[15] <- gsub("Dette vidner om, at.*", "", all_texts_withcount$description[15])
+all_texts_withcount$description[17] <- gsub("I yngre bronzealder,.*", "", all_texts_withcount$description[17])
+all_texts_withcount$description[22] <- gsub("Under normale omstændighed.*", "", all_texts_withcount$description[22])
+all_texts_withcount$description[24] <- gsub("Skåltegn er mindre, cirkul.*", "", all_texts_withcount$description[24])
+all_texts_withcount$description[25] <- gsub("\n Som tak for helbredels.*", "", all_texts_withcount$description[25])
+all_texts_withcount$description[28] <- gsub("Dysse, Sjælland\\.", "", all_texts_withcount$description[28])
+all_texts_withcount$description[28] <- gsub("I løbet af et par h.*", "", all_texts_withcount$description[28])
+all_texts_withcount$description[31] <- gsub("Lovgivningen om heg.*", "", all_texts_withcount$description[31])
+all_texts_withcount$description[32] <- gsub("\n Mesolitiske indeho.*", "", all_texts_withcount$description[32])
+all_texts_withcount$description[33] <- gsub("Mange tilflugtsbo.*", "", all_texts_withcount$description[33])
+all_texts_withcount$description[35] <- gsub("Med skorstenen, som.*", "", all_texts_withcount$description[35])
+all_texts_withcount$description[40] <- gsub("I dag findes omkring 250.*", "", all_texts_withcount$description[40])
+all_texts_withcount$description[47] <- gsub("Der er dog mange st.*", "", all_texts_withcount$description[47])
+
+
+#Automatically extracting first five sentences from the rest of the descriptions
+for(i in c(50:nrow(all_texts_withcount))){
+  all_texts_withcount$description[i] <- extract_five_sentences(all_texts_withcount$description[i])
+}
+#Removing NAs and adding help description to add new text.
+all_texts_withcount$description <- ifelse(all_texts_withcount$description=="NA", "Der findes ingen beskrivelse af dette fund endnu. Hjælp os med tilføje en beskrivelse i bunden af menuen til højre.",all_texts_withcount$description)
+
+write.csv(all_texts_withcount, file="anlaeg_description.csv", row.names = FALSE)
+```
+

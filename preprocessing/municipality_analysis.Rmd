@@ -1,0 +1,72 @@
+---
+title: "Kommune_analyser"
+output: html_document
+---
+
+```{r}
+library(pacman)
+p_load(gtools, tidyverse)
+
+
+data <- st_read("../data/anlaeg_all_4326.shp") #load data
+
+data_no_na <- data[!is.na(data$kommunenav),] #remove NAs
+kommuner <- unique(data_no_na$kommunenav) # create list of unique municipality names
+
+anlaegsbet_unique <- unique(data_no_na$anlaegsbet) # create list of unique finding types
+anlaegsbet_unique <- anlaegsbet_unique[!is.na(anlaegsbet_unique)] # Remove NA
+
+alle_kommuner <- data.frame() #create empty data frame for storing municipality information
+
+for(kommune in kommuner){ #loop through municipalities
+  
+  kommune_data <- data_no_na[data_no_na$kommunenav==kommune,] # Select specific municipality in data
+  
+  kommune_summary <- as.data.frame(summary(as.factor(kommune_data$anlaegsbet), maxsum = 325)/length(kommune_data$anlaegsbet)) # create summary showing percentage of total findings 
+
+  count <- as.data.frame(summary(as.factor(kommune_data$anlaegsbet), maxsum = 325)) #create count summary of items
+  kommune_summary$anlaegsbet <- rownames(kommune_summary) 
+  kommune_summary$count <- count[,1] 
+  
+  #Add missing finding types so all are represented in the data
+  missing_anlaeg <- anlaegsbet_unique[!anlaegsbet_unique %in% kommune_summary$anlaegsbet]
+  missing_df <- data.frame(anlaegsbet = missing_anlaeg,
+                           percentage = c(rep(0, length(missing_anlaeg))),
+                           count = c(rep(0, length(missing_anlaeg))))
+  
+  
+  rownames(kommune_summary) <- c(1:nrow(kommune_summary))
+  colnames(kommune_summary)[1] <- "percentage" 
+  
+  kommune_summary <- smartbind(kommune_summary, missing_df) #Add information 
+  kommune_summary$kommune <- kommune #add municipality name
+  
+  alle_kommuner <- smartbind(alle_kommuner, kommune_summary) #add data to overall data frame
+}
+
+anlaegsbet_metrics <- data.frame() #empty data frame for storing results
+for(anlaeg in anlaegsbet_unique){ #loop through finding types
+  anlaeg_df <- alle_kommuner[alle_kommuner$anlaegsbet == anlaeg,] #select specific finding type
+  
+  mean_perc <- mean(anlaeg_df$percentage) # calculate mean percentage
+  sd_perc <- sd(anlaeg_df$percentage) #calculate standard deviations of percentage
+  
+  metrics <- data.frame(mean_percentage = mean_perc,
+                        sd_percentage = sd_perc,
+                        anlaegsbet = anlaeg) #add to data frame
+  
+  anlaegsbet_metrics <- smartbind(anlaegsbet_metrics,metrics) #Add to overall data frame
+}
+
+alle_kommuner <- left_join(alle_kommuner, anlaegsbet_metrics,by="anlaegsbet" ) #Add finding type information
+#Calculate representation of finding types per municipality
+alle_kommuner$representation <- (alle_kommuner$percentage-alle_kommuner$mean_percentage)/alle_kommuner$sd_percentage
+#Calculate percentage increase according to overall mean of finding types per municipality
+alle_kommuner$percentage_increase <- alle_kommuner$percentage/alle_kommuner$mean_percentage*100
+#Select specific columns
+alle_kommuner_plotinfo <- alle_kommuner %>% select(c(kommune,anlaegsbet, count,percentage_increase))
+
+#Write the data frame to .csv
+write.csv(alle_kommuner_plotinfo, "../data/preprocessed/municipality_analysis.csv", row.names=F)
+```
+
