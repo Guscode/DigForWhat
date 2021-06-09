@@ -77,4 +77,4 @@ Please place the files in the analyses folder
 3. Run analyses <br/>
 
 
-In Rstudio open elevation.r and point_patterns.r
+In Rstudio open and run elevation.r and point_patterns.r
