@@ -18,4 +18,4 @@ Files in this folder:
 - preprocessed/municipal_elevation.csv: elevation data on finding types per municipality made with the script elevation.r in the analyses folder
 
 
-
+For more details on the project, please see [project readme](https://github.com/Guscode/DigForWhat)
