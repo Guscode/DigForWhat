@@ -48,7 +48,7 @@ When the data is downloaded, please unzip the file and place all files in the da
 Open digforwhat.r in rstudio and press run app. <br/>
 If English version is needed, please select digforwhat_english.r instead.
 
-__enjoy__
+_enjoy_
 
 ### Running analyses on your own computer
 
@@ -66,7 +66,7 @@ cd DigForWhat
 
 
 - Before the data kan be accessed, one needs to create a user on https://kortforsyningen.dk/indhold/min-side-0.
-- To access the terrain elevation model of Denmark, a file transfer protocol folder is downloadeded through ftp://ftp.kortforsyningen.dk/HIP/randbetingelser/oevrige/terraenmodel/
+- To access the terrain elevation model of Denmark, a file transfer protocol folder is downloaded through ftp://ftp.kortforsyningen.dk/HIP/randbetingelser/oevrige/terraenmodel/
 - The link will ask you to open in finder, where you can log in with your username and password.
 
 Please place the files in the analyses folder
