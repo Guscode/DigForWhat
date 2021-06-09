@@ -48,6 +48,12 @@ When the data is downloaded, please unzip the file and place all files in the da
 Open digforwhat.r in rstudio and press run app. <br/>
 If English version is needed, please select digforwhat_english.r instead.
 
+In order to combat possible encoding errors caused by ÆÅØ, please run:
+```bash
+Sys.setlocale(category = "LC_ALL", locale = "UTF-8")
+```
+
+
 _enjoy_
 
 ### Running analyses on your own computer
