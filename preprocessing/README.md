@@ -9,3 +9,5 @@ files in this folder:
 - municipality_analysis.rmd: script for extracting plotting metrics per municipality
 - colors.r: script assigning colors to each finding type
 - KOMMUNE.shp: shapefile with polygons for Danish municipalities
+
+For more details on the project, please see [project readme](https://github.com/Guscode/DigForWhat)
