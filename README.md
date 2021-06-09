@@ -36,9 +36,9 @@ The data should be downloaded from here:[fund og fortidsminder](https://www.kult
 When downloading it, please select the following
 - Geometritype: Punkter
 - Format: ESRI Shapefile
-- Referencesystem: Længde-bredde/WGS84
-<br/>
-When the data is downloaded, please extract the zip file and place all files in the data folder
+- Referencesystem: Længde-bredde/WGS84 
+
+When the data is downloaded, please unzip the file and place all files in the data folder <br/>
 
 3. Launch the app <br/>
 Open digforwhat.r in rstudio and press run app. <br/>
