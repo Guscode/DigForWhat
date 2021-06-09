@@ -37,10 +37,15 @@ cd DigForWhat
 2. Add the 'Fund og Fortidsminder data <br/>
 
 The data should be downloaded from here: [fund og fortidsminder](https://www.kulturarv.dk/fundogfortidsminder/Download/) <br/>
-When downloading it, please select the following
+Please download the shapefile with CRS WGS84 by selecting the following
 - Geometritype: Punkter
 - Format: ESRI Shapefile
 - Referencesystem: Længde-bredde/WGS84 
+
+Afterwards, please download the version with CRS UTM 32N:
+- Geometritype: Punkter
+- Format: ESRI Shapefile
+- Referencesystem: UTM 32N/ETRS89
 
 When the data is downloaded, please unzip the file and place all files in the data folder <br/>
 
@@ -83,5 +88,8 @@ Please place the files in the analyses folder
 In Rstudio open and run elevation.r and point_patterns.r
 
 ## License
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/Guscode/DigForWhat/blob/main/LICENSE) file for details.
+
 
 ## Contact
+For further questions, please get in touch with us here gustavaarup0111@gmail.com. 
