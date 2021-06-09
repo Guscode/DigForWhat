@@ -13,4 +13,6 @@ files in this folder:
 - point_patterns.r: script for performing point pattern analysis
 
 
+For more details on the project, please see [project readme](https://github.com/Guscode/DigForWhat)
+
 
