@@ -12,7 +12,11 @@ The app was created by [Frida](github.com/frillecode/), [Marie](github.com/marmo
 
 </p>
 
-## Launching the app on your own computer
+## How To Run
+
+Here is a guide for using the code in this repository on your local machine. All the code was produced and tested on an Ubunto operating system (Version: 18.04.5 LTS (Bionic Beaver))
+
+### Running the app on your own computer
 
 In order to launch the app on your own computer please follow these steps: <br/>
 Requirements: <br/>
@@ -46,14 +50,7 @@ If English version is needed, please select digforwhat_english.r instead.
 
 __enjoy__
 
-## Running analyses on your own computer
-
-In order to run analyses on your own computer please follow these steps: <br/>
-Requirements: <br/>
-- [R](https://www.r-project.org/) Version >= 4.0
-- [Rstudio](https://www.rstudio.com/products/rstudio/download/#download) Version >= 1.3
-- [Git](https://git-scm.com/)
-
+### Running analyses on your own computer
 
 1. Clone this repository to your own computer <br/>
 
@@ -78,3 +75,7 @@ Please place the files in the analyses folder
 
 
 In Rstudio open and run elevation.r and point_patterns.r
+
+## License
+
+## Contact
